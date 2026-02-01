@@ -6,3 +6,5 @@ numpy
 scipy
 soundfile
 requests
+transformers
+torch
