@@ -1,10 +1,5 @@
 fastapi
 uvicorn
-python-multipart
 librosa
 numpy
-scipy
 soundfile
-requests
-transformers
-torch
