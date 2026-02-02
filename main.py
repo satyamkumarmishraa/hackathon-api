@@ -88,17 +88,18 @@ async def detect_voice(request: Request):
         audio_format = data.get("audioFormat")
         audio_b64 = data.get("audioBase64")
 
+        # 🔒 SAFE INPUT NORMALIZATION (ONLY THIS CHANGE)
+        if isinstance(language, str):
+            language = language.capitalize()
+
+        if isinstance(audio_format, str):
+            audio_format = audio_format.lower()
+
         if language not in SUPPORTED_LANGUAGES:
-            return {
-                "status": "error",
-                "message": "Unsupported language"
-            }
+            return {"status": "error", "message": "Unsupported language"}
 
         if audio_format != "mp3" or not audio_b64:
-            return {
-                "status": "error",
-                "message": "Invalid audio format or missing audio"
-            }
+            return {"status": "error", "message": "Invalid audio format or missing audio"}
 
         label, score, explanation = analyze_audio_signal(audio_b64)
 
