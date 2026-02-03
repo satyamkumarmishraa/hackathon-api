@@ -21,10 +21,14 @@ SUPPORTED_LANGUAGES = {
 
 def analyze_audio_signal(audio_b64: str):
     try:
+        # Remove data URI if present
         if "," in audio_b64:
             audio_b64 = audio_b64.split(",")[1]
 
-        audio_bytes = base64.b64decode(audio_b64)
+        # 🔧 CRITICAL FIX (Dashboard Base64 issue)
+        audio_b64 = audio_b64.strip().replace("\n", "").replace(" ", "")
+
+        audio_bytes = base64.b64decode(audio_b64, validate=True)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
             tmp.write(audio_bytes)
@@ -40,6 +44,7 @@ def analyze_audio_signal(audio_b64: str):
         rms = float(np.mean(librosa.feature.rms(y=y)))
         zcr = float(np.mean(librosa.feature.zero_crossing_rate(y)))
 
+        # ---- AI DETECTION ----
         if flatness > 0.025 or rms < 0.006:
             confidence = min(0.95, 0.85 + flatness * 4)
             return (
@@ -56,6 +61,7 @@ def analyze_audio_signal(audio_b64: str):
                 "Human-like but overly stable voice patterns suggest synthetic generation"
             )
 
+        # ---- HUMAN ----
         confidence = max(0.65, 0.80 - flatness * 2)
         return (
             "HUMAN",
@@ -88,7 +94,7 @@ async def detect_voice(request: Request):
         audio_format = data.get("audioFormat")
         audio_b64 = data.get("audioBase64")
 
-        # 🔒 SAFE INPUT NORMALIZATION (ONLY THIS CHANGE)
+        # SAFE normalization (dashboard case issue)
         if isinstance(language, str):
             language = language.capitalize()
 
