@@ -34,7 +34,7 @@ def analyze_audio_signal(audio_b64: str):
         # FINAL RULE-SAFE BASE64 SANITATION
         audio_b64 = audio_b64.strip().replace("\n", "").replace(" ", "")
 
-        # Safe padding handling (RFC-compliant)
+        # Safe padding handling
         missing_padding = len(audio_b64) % 4
         if missing_padding:
             audio_b64 += "=" * (4 - missing_padding)
@@ -56,7 +56,6 @@ def analyze_audio_signal(audio_b64: str):
         # Feature extraction
         flatness = float(np.mean(librosa.feature.spectral_flatness(y=y)))
         rms = float(np.mean(librosa.feature.rms(y=y)))
-        zcr = float(np.mean(librosa.feature.zero_crossing_rate(y)))
 
         # AI detection logic
         if flatness > 0.025 or rms < 0.006:
@@ -75,7 +74,6 @@ def analyze_audio_signal(audio_b64: str):
                 "Human-like but overly stable voice patterns suggest synthetic generation"
             )
 
-        # Human
         confidence = max(0.65, 0.80 - flatness * 2)
         return (
             "HUMAN",
@@ -94,7 +92,6 @@ def analyze_audio_signal(audio_b64: str):
 @app.post("/detect")
 async def detect_voice(request: Request):
 
-    # API key check
     api_key = request.headers.get("x-api-key")
     if api_key not in VALID_API_KEYS:
         return JSONResponse(
@@ -112,7 +109,6 @@ async def detect_voice(request: Request):
         audio_format = data.get("audioFormat")
         audio_b64 = data.get("audioBase64")
 
-        # Safe normalization (case issues)
         if isinstance(language, str):
             language = language.capitalize()
 
@@ -120,16 +116,10 @@ async def detect_voice(request: Request):
             audio_format = audio_format.lower()
 
         if language not in SUPPORTED_LANGUAGES:
-            return {
-                "status": "error",
-                "message": "Unsupported language"
-            }
+            return {"status": "error", "message": "Unsupported language"}
 
         if audio_format != "mp3" or not audio_b64:
-            return {
-                "status": "error",
-                "message": "Invalid audio format or missing audio"
-            }
+            return {"status": "error", "message": "Invalid audio format or missing audio"}
 
         label, score, explanation = analyze_audio_signal(audio_b64)
 
@@ -143,13 +133,11 @@ async def detect_voice(request: Request):
 
     except Exception as e:
         print("Request error:", e)
-        return {
-            "status": "error",
-            "message": "Malformed request or internal error"
-        }
+        return {"status": "error", "message": "Malformed request or internal error"}
 
 # ======================
-# RUN SERVER (LOCAL ONLY)
+# RUN SERVER (RAILWAY SAFE)
 # ======================
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001) 
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)
