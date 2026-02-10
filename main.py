@@ -4,7 +4,6 @@ import tempfile
 import os
 import numpy as np
 import librosa
-import random
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -22,13 +21,6 @@ VALID_API_KEYS = {
 SUPPORTED_LANGUAGES = {
     "Tamil", "English", "Hindi", "Malayalam", "Telugu"
 }
-
-# ======================
-# CONFIDENCE SMOOTHING (RULE-SAFE)
-# ======================
-def smooth_confidence(conf: float) -> float:
-    noise = random.uniform(-0.02, 0.02)  # very small natural variation
-    return round(max(0.0, min(1.0, conf + noise)), 2)
 
 # ======================
 # AUDIO ANALYSIS
@@ -59,7 +51,7 @@ def analyze_audio_signal(audio_b64: str):
         os.remove(path)
 
         if y is None or len(y) == 0:
-            return "HUMAN", smooth_confidence(0.60), "Empty or invalid audio signal detected"
+            return "HUMAN", 0.60, "Empty or invalid audio signal detected"
 
         # Feature extraction
         flatness = float(np.mean(librosa.feature.spectral_flatness(y=y)))
@@ -70,7 +62,7 @@ def analyze_audio_signal(audio_b64: str):
             confidence = min(0.95, 0.85 + flatness * 4)
             return (
                 "AI_GENERATED",
-                smooth_confidence(confidence),
+                round(confidence, 2),
                 "Highly consistent spectral patterns and synthetic speech characteristics detected"
             )
 
@@ -78,20 +70,20 @@ def analyze_audio_signal(audio_b64: str):
             confidence = min(0.85, 0.70 + flatness * 3)
             return (
                 "AI_GENERATED",
-                smooth_confidence(confidence),
+                round(confidence, 2),
                 "Human-like but overly stable voice patterns suggest synthetic generation"
             )
 
         confidence = max(0.65, 0.80 - flatness * 2)
         return (
             "HUMAN",
-            smooth_confidence(confidence),
+            round(confidence, 2),
             "Natural pitch variation and dynamic speech patterns observed"
         )
 
     except Exception as e:
         print("Audio error:", e)
-        return "HUMAN", smooth_confidence(0.65), "Audio processed with conservative fallback decision"
+        return "HUMAN", 0.65, "Audio processed with conservative fallback decision"
 
 # ======================
 # API ENDPOINT
